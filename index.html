@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Filopplasting til GitHub</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: én smal arbeidsflate – oppsett, slippsone, opplastingslogg */
+:root{
+  --bg:#f4f7fb; --surface:#ffffff; --fg:#0f1e33; --muted:#5a6b82; --line:#d6e0ec;
+  --accent:#0057b8; --on-accent:#ffffff; --accent-soft:#e6effa; --ok:#1d7a4a; --ok-soft:#e5f4ec; --err:#b3261e; --err-soft:#fbeaea; --warn:#8a5a00; --warn-soft:#fdf3dc;
+  --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0b1522; --surface:#122033; --fg:#e6eef8; --muted:#93a5bd; --line:#24364d;
+  --accent:#5aa2f0; --on-accent:#0b1522; --accent-soft:#16304d; --ok:#5fcf93; --ok-soft:#123426; --err:#f08a84; --err-soft:#3a1715; --warn:#e9b851; --warn-soft:#33270b; color-scheme:dark}}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:640px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+[hidden]{display:none!important}
+header{display:flex;flex-direction:column;gap:4px}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+h1{margin:0;font-size:26px;font-weight:700;text-wrap:balance}
+.sub{margin:0;color:var(--muted);max-width:60ch}
+code,.mono{font-family:var(--f-mono);font-size:13px}
+.dest{background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:4px;overflow-wrap:anywhere}
+details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+summary{cursor:pointer;font-weight:600}
+.form{display:grid;gap:12px;margin-top:12px}
+.field{display:grid;gap:4px}
+.field label{font-size:13px;font-weight:600}
+.field small{color:var(--muted);font-size:12.5px}
+input[type=text],input[type=password]{font:inherit;font-family:var(--f-mono);font-size:14px;width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg)}
+input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:600;background:var(--accent);color:var(--on-accent);border:0;border-radius:8px;padding:9px 16px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--line)}
+.btn:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.note{border-radius:10px;padding:10px 12px;font-size:14px}
+.note.warn{background:var(--warn-soft);color:var(--warn)}
+.note.err{background:var(--err-soft);color:var(--err)}
+.note.ok{background:var(--ok-soft);color:var(--ok)}
+#drop{border:2px dashed var(--line);border-radius:14px;background:var(--surface);padding:36px 20px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;transition:border-color .15s,background .15s}
+#drop:hover,#drop:focus-visible{border-color:var(--accent);outline:none}
+#drop.over{border-color:var(--accent);background:var(--accent-soft)}
+#drop.off{opacity:.55;cursor:not-allowed}
+#drop svg{width:40px;height:40px;color:var(--accent)}
+#drop strong{font-size:17px}
+#drop span{color:var(--muted);font-size:14px}
+section h2{margin:0 0 8px;font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center}
+.name{font-weight:600;min-width:0;overflow-wrap:anywhere}
+.meta{grid-column:1;font-family:var(--f-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:0;overflow-wrap:anywhere}
+.meta a{color:var(--accent)}
+.pill{grid-row:1/span 2;grid-column:2;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill.busy{background:var(--accent-soft);color:var(--accent)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.pill.err{background:var(--err-soft);color:var(--err)}
+.empty{display:block;color:var(--muted);font-size:14px;border:1px dashed var(--line);border-radius:10px;padding:14px;text-align:center}
+@media (prefers-reduced-motion:reduce){#drop{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Tester · Nybygg Dashbord</div>
+    <h1>Filopplasting til GitHub</h1>
+    <p class="sub">Dra filer hit. De lagres i <span class="dest mono" id="destLabel">–</span>, der Claude kan lese dem.</p>
+  </header>
+
+  <details id="setup">
+    <summary>Oppsett</summary>
+    <div class="form">
+      <div class="field">
+        <label for="token">GitHub-nøkkel (fine-grained token)</label>
+        <input id="token" type="password" autocomplete="off" placeholder="github_pat_…">
+        <small>Lagres bare i denne nettleseren. Lag den på github.com → Settings → Developer settings → Fine-grained tokens, med tilgang til kun mål-repoet og «Contents: Read and write».</small>
+      </div>
+      <div class="field">
+        <label for="repo">Mål-repo</label>
+        <input id="repo" type="text" placeholder="madsfossmark-ai/databank-opplastinger">
+        <small>Bruk helst et <strong>privat</strong> repo for jobbfiler.</small>
+      </div>
+      <div class="field">
+        <label for="folder">Mappe i repoet</label>
+        <input id="folder" type="text" placeholder="opplastinger">
+      </div>
+      <div class="row">
+        <button class="btn" id="save" type="button">Lagre og test tilkobling</button>
+        <button class="btn ghost" id="forget" type="button">Glem nøkkel</button>
+      </div>
+      <div id="setupNote" class="note" hidden></div>
+    </div>
+  </details>
+
+  <div id="repoNote" class="note" hidden></div>
+
+  <label id="drop" for="picker" tabindex="0">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+    <strong>Slipp filer her</strong>
+    <span>PDF, Excel, Word, bilder – maks 25 MB per fil</span>
+    <span class="btn" aria-hidden="true">Velg filer</span>
+  </label>
+  <input id="picker" type="file" multiple hidden>
+
+  <section>
+    <h2>Lastet opp nå</h2>
+    <ul id="log"><li class="empty" id="empty">Ingen filer ennå. Fyll inn oppsettet først.</li></ul>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const store={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+const DEF_REPO="madsfossmark-ai/filopplasting", DEF_FOLDER="opplastinger", MAX=25*1024*1024;
+let cfg={token:store.get("fu_token"),repo:store.get("fu_repo")||DEF_REPO,folder:store.get("fu_folder")||DEF_FOLDER};
+let ready=false;
+
+function note(el,cls,text){el.className="note "+cls;el.textContent=text;el.hidden=!text;}
+function fmt(b){return b<1024?b+" B":b<1048576?(b/1024).toFixed(0)+" KB":(b/1048576).toFixed(1)+" MB";}
+function b64(buf){let s="",u=new Uint8Array(buf);for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s);}
+function stamp(){const d=new Date(),p=n=>String(n).padStart(2,"0");return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"_"+p(d.getHours())+p(d.getMinutes())+p(d.getSeconds());}
+function safeName(n){return n.normalize("NFC").replace(/[\\/:*?"<>|#%]+/g,"-").replace(/\s+/g," ").trim();}
+function api(path,opts={}){return fetch("https://api.github.com"+path,{...opts,headers:{"Accept":"application/vnd.github+json","Authorization":"Bearer "+cfg.token,"X-GitHub-Api-Version":"2022-11-28",...(opts.headers||{})}});}
+
+function render(){
+  $("token").value=cfg.token; $("repo").value=cfg.repo; $("folder").value=cfg.folder;
+  $("destLabel").textContent=cfg.repo+"/"+cfg.folder;
+  $("drop").classList.toggle("off",!ready);
+}
+
+async function check(){
+  ready=false;
+  if(!cfg.token){ $("setup").open=true; note($("repoNote"),"warn","Legg inn GitHub-nøkkelen under Oppsett for å starte."); render(); return; }
+  try{
+    const r=await api("/repos/"+cfg.repo);
+    if(r.status===401){ note($("repoNote"),"err","Nøkkelen ble avvist. Sjekk at den er riktig og ikke utløpt."); $("setup").open=true; render(); return; }
+    if(r.status===404){ note($("repoNote"),"err","Fant ikke repoet "+cfg.repo+", eller nøkkelen har ikke tilgang til det."); $("setup").open=true; render(); return; }
+    if(!r.ok){ note($("repoNote"),"err","GitHub svarte med feil "+r.status+". Prøv igjen om litt."); render(); return; }
+    const j=await r.json();
+    if(j.permissions && !j.permissions.push){ note($("repoNote"),"err","Nøkkelen kan lese, men ikke skrive til "+cfg.repo+". Gi den «Contents: Read and write»."); render(); return; }
+    ready=true;
+    note($("repoNote"),j.private?"ok":"warn", j.private ? "Koblet til det private repoet "+cfg.repo+"." : "Obs: "+cfg.repo+" er offentlig. Alt du laster opp her kan ses av alle. Bruk et privat repo for jobbfiler.");
+  }catch(e){ note($("repoNote"),"err","Fikk ikke kontakt med GitHub. Sjekk nettet."); }
+  render();
+}
+
+$("save").addEventListener("click",async()=>{
+  cfg.token=$("token").value.trim(); cfg.repo=($("repo").value.trim()||DEF_REPO).replace(/^https?:\/\/github\.com\//,"").replace(/\/$/,""); cfg.folder=($("folder").value.trim()||DEF_FOLDER).replace(/^\/+|\/+$/g,"");
+  store.set("fu_token",cfg.token); store.set("fu_repo",cfg.repo); store.set("fu_folder",cfg.folder);
+  note($("setupNote"),"ok","Lagret. Tester tilkoblingen…");
+  await check();
+  note($("setupNote"),ready?"ok":"err",ready?"Tilkoblingen virker.":"Tilkoblingen virker ikke ennå – se meldingen under.");
+  if(ready) $("setup").open=false;
+});
+$("forget").addEventListener("click",()=>{ store.del("fu_token"); cfg.token=""; note($("setupNote"),"ok","Nøkkelen er fjernet fra denne nettleseren."); check(); });
+
+function addRow(f){
+  $("empty")?.remove();
+  const li=document.createElement("li");
+  li.innerHTML='<div class="name"></div><span class="pill busy">Laster opp…</span><div class="meta"></div>';
+  li.querySelector(".name").textContent=f.name; li.querySelector(".meta").textContent=fmt(f.size);
+  $("log").prepend(li); return li;
+}
+function setRow(li,state,label,text,link){
+  const p=li.querySelector(".pill"); p.className="pill "+state; p.textContent=label;
+  const m=li.querySelector(".meta"); if(text) m.textContent=text;
+  if(link){const a=document.createElement("a");a.href=link;a.target="_blank";a.rel="noopener";a.textContent="Åpne på GitHub";m.append(" · ",a);}
+}
+
+async function upload(f){
+  const li=addRow(f);
+  if(!ready){ setRow(li,"err","Ikke klar","Fullfør oppsettet først."); return; }
+  if(f.size>MAX){ setRow(li,"err","For stor",fmt(f.size)+" – grensen er 25 MB"); return; }
+  const path=cfg.folder+"/"+stamp()+"_"+safeName(f.name);
+  try{
+    const content=b64(await f.arrayBuffer());
+    const r=await api("/repos/"+cfg.repo+"/contents/"+path.split("/").map(encodeURIComponent).join("/"),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:"Opplasting: "+f.name,content})});
+    if(r.ok){ const j=await r.json(); setRow(li,"ok","Lagret",fmt(f.size)+" · "+path,j.content&&j.content.html_url); return; }
+    const msg={401:"Nøkkelen ble avvist.",403:"Nøkkelen mangler skrivetilgang.",404:"Fant ikke repoet.",409:"Konflikt – prøv igjen.",413:"Filen er for stor for GitHub.",422:"GitHub avviste filen."}[r.status]||("Feil "+r.status+" fra GitHub.");
+    setRow(li,"err","Feilet",msg);
+  }catch(e){ setRow(li,"err","Feilet","Fikk ikke kontakt med GitHub. Sjekk repoet før du prøver igjen."); }
+}
+
+async function handle(files){ for(const f of files) await upload(f); }
+$("picker").addEventListener("change",()=>{ handle([...$("picker").files]); $("picker").value=""; });
+$("drop").addEventListener("click",e=>{ if(!ready){ e.preventDefault(); $("setup").open=true; $("token").focus(); }});
+$("drop").addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); ready?$("picker").click():($("setup").open=true); }});
+["dragenter","dragover"].forEach(t=>$("drop").addEventListener(t,e=>{e.preventDefault();$("drop").classList.add("over");}));
+["dragleave","drop"].forEach(t=>$("drop").addEventListener(t,e=>{e.preventDefault();$("drop").classList.remove("over");}));
+$("drop").addEventListener("drop",e=>handle([...e.dataTransfer.files]));
+window.addEventListener("dragover",e=>e.preventDefault()); window.addEventListener("drop",e=>e.preventDefault());
+
+render(); check();
+</script>
+</body>
+</html>
