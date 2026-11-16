@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Motorlyd</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: bilinstrument – mørkt, presist, store tall som leses på et blikk
+   IDEA: et dashbord bak rattet: turtellerskive, girindikator, pedaler i metall
+   PICTURE: stor turteller med oransje bue og rød sone
+   COLOUR and TYPE: kull #0d0f12, grafitt-kort, oransje #ff6a1a aksent, rød #d3263a; Barlow Condensed for tall
+   LAYOUT: to kolonner i liggende Tesla-skjerm (instrument venstre, bil og valg høyre), stablet på mobil */
+:root{color-scheme:dark;--bg:#0b0d10;--card:#15181d;--card2:#1c2026;--line:#2a2f37;--ink:#eef1f4;--mute:#8d96a3;--acc:#ff6a1a;--acc2:#ff8a3d;--red:#d3263a;--ok:#35d07f}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Barlow,system-ui,sans-serif;overflow-x:clip}
+body{background:radial-gradient(1200px 600px at 20% -10%,#1b1f26 0,transparent 60%),var(--bg)}
+button{font:inherit;color:inherit;cursor:pointer}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px max(2.5vw,14px) 6px}
+.brand{display:flex;align-items:center;gap:10px;font:700 22px/1 "Barlow Condensed",sans-serif;letter-spacing:.02em}
+.brand svg{width:30px;height:30px}
+.pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.pill{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border:1px solid var(--line);border-radius:99px;font-size:14px;color:var(--mute);background:#111418;white-space:nowrap}
+.pill::before{content:"";width:8px;height:8px;border-radius:50%;background:#555}
+.pill.ok{color:#c9f5dc}.pill.ok::before{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.pill.wait::before{background:#f2b33d}.pill.bad{color:#ffb3bb}.pill.bad::before{background:var(--red)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;padding:8px max(2.5vw,14px) 14px;max-width:1500px;margin:0 auto}
+.card{background:linear-gradient(180deg,var(--card),#121418);border:1px solid var(--line);border-radius:22px;padding:18px}
+.dash{display:flex;flex-direction:column;gap:12px}
+.gauge{position:relative;width:min(100%,62vh,560px);aspect-ratio:300/262;margin:0 auto}
+.gauge svg{position:absolute;inset:0;width:100%;height:100%}
+.read{position:absolute;left:0;right:0;top:35%;text-align:center;pointer-events:none}
+#spd{font:800 clamp(52px,9.5vh,92px)/.9 "Barlow Condensed",sans-serif;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+#unit{color:var(--mute);font-size:15px;margin-top:2px}
+#gear{display:inline-grid;place-items:center;min-width:50px;height:46px;margin-top:6px;padding:0 10px;border-radius:12px;background:#0c0e11;border:1px solid var(--line);font:800 34px/1 "Barlow Condensed",sans-serif}
+#gear.shift{border-color:var(--acc);color:var(--acc2)}
+#rpmt{color:var(--mute);font-size:14px;margin-top:8px;font-variant-numeric:tabular-nums}
+.thr{display:flex;align-items:center;gap:12px;color:var(--mute);font-size:14px}
+.bar{flex:1;height:8px;border-radius:9px;background:#0c0e11;overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:9px;transition:width .08s}
+.pedals{display:grid;grid-template-columns:1.35fr .9fr 1fr;gap:14px;align-items:end;user-select:none;touch-action:none}
+.pedal{display:flex;flex-direction:column;align-items:center;gap:6px;touch-action:none}
+.pedal small{font-weight:600;letter-spacing:.12em;color:var(--mute);font-size:13px}
+.plate{width:100%;height:118px;border-radius:16px;background:repeating-linear-gradient(90deg,#d9dde2 0 14px,#2b2f35 14px 24px);border:6px solid #c7ccd2;box-shadow:inset 0 -10px 18px rgba(0,0,0,.45),0 8px 18px rgba(0,0,0,.5);transition:transform .06s,filter .06s;position:relative;overflow:hidden}
+.plate.tall{height:168px;background:repeating-linear-gradient(90deg,#d9dde2 0 16px,#2b2f35 16px 30px)}
+.pedal.on .plate{transform:scale(.96) translateY(4px);filter:brightness(.85)}
+.gas.on .plate{box-shadow:inset 0 -10px 18px rgba(0,0,0,.45),0 0 0 3px var(--acc)}
+.brake.on .plate{box-shadow:inset 0 -10px 18px rgba(0,0,0,.45),0 0 0 3px var(--red)}
+.plate .lvl{position:absolute;left:0;right:0;bottom:0;background:rgba(255,106,26,.45);height:0}
+.plate .hold{position:absolute;left:0;right:0;top:0;height:22%;border-bottom:2px dashed rgba(255,255,255,.7);display:grid;place-items:center;font:700 11px/1 Barlow;color:#111;background:rgba(255,255,255,.55)}
+.revbtn{height:118px;border-radius:18px;border:1px solid #3a2a22;background:radial-gradient(circle at 50% 35%,#2a1c15,#140f0c);font:800 30px/1 "Barlow Condensed",sans-serif;letter-spacing:.06em;color:var(--acc2);touch-action:none;user-select:none}
+.revbtn.on{background:radial-gradient(circle at 50% 35%,#ff7a2a,#b63c0b);color:#fff;border-color:var(--acc)}
+.revbtn small{display:block;font:500 12px/1.2 Barlow;color:var(--mute);letter-spacing:0;margin-top:6px}
+.revbtn.on small{color:#ffe3d2}
+.gpsrow{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:stretch}
+.gpsbox{border:1px solid var(--line);border-radius:16px;padding:14px 16px;background:#101317;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.gpsbox div{font-size:13px;color:var(--mute)}.gpsbox b{display:block;font:700 22px/1.1 "Barlow Condensed",sans-serif;color:var(--ink);white-space:nowrap}
+.gpsrow .revbtn{width:150px;height:auto;min-height:84px}
+.hint{margin:0;color:var(--mute);font-size:13px;text-align:center}
+.side{display:flex;flex-direction:column;gap:12px}
+.start{display:flex;align-items:center;justify-content:center;gap:14px;width:100%;min-height:76px;border:0;border-radius:18px;background:linear-gradient(180deg,#ff7d2e,#f0520c);box-shadow:0 10px 30px rgba(255,90,20,.28),inset 0 1px 0 rgba(255,255,255,.35);font:800 30px/1 "Barlow Condensed",sans-serif;letter-spacing:.08em;color:#fff}
+.start .ring{width:26px;height:26px;border:4px solid #fff;border-radius:50%}
+.start.on{background:linear-gradient(180deg,#2a2f37,#1d2127);box-shadow:inset 0 0 0 2px var(--acc);color:var(--acc2)}
+.start.on .ring{border-color:var(--acc2);background:var(--acc2);box-shadow:0 0 12px var(--acc)}
+.hero{position:relative;height:clamp(120px,20vh,190px);border-radius:16px;background:radial-gradient(60% 70% at 50% 85%,#262b33,transparent 70%);display:grid;place-items:center}
+.hero svg{width:min(100%,460px);height:100%}
+.carinfo{border:1px solid #3a2a22;border-radius:14px;padding:10px 14px;background:linear-gradient(180deg,#1d1612,#15120f)}
+.carinfo h2{margin:0;font:700 24px/1.1 "Barlow Condensed",sans-serif}
+.carinfo p{margin:2px 0 0;color:var(--mute);font-size:14px}
+.cars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.cars button{border:1px solid var(--line);background:var(--card2);border-radius:12px;padding:6px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:13px;line-height:1.15;min-height:74px;text-align:center}
+.cars button svg{width:100%;height:38px}
+.cars button.sel{border-color:var(--acc);background:#24180f;box-shadow:0 0 0 1px var(--acc)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:14px;background:#0f1215;border:1px solid var(--line)}
+.seg button{border:0;background:transparent;border-radius:10px;min-height:48px;font-size:17px;color:var(--mute)}
+.seg button.sel{background:var(--card2);color:var(--ink);box-shadow:0 1px 0 rgba(255,255,255,.06) inset}
+.demo{min-height:52px;border-radius:14px;border:1px solid var(--line);background:#111418;font-size:17px}
+.demo.on{border-color:var(--acc);color:var(--acc2)}
+.row{display:flex;align-items:center;gap:14px;color:var(--mute);font-size:15px}
+.row output{color:var(--ink);min-width:3.4em;font-variant-numeric:tabular-nums}
+input[type=range]{flex:1;accent-color:var(--acc);height:36px}
+details.more{border:1px solid var(--line);border-radius:14px;background:#111418}
+details.more summary{list-style:none;padding:14px 16px;cursor:pointer;display:flex;justify-content:space-between;font-weight:600}
+details.more summary::after{content:"⌄";color:var(--acc)}
+details.more[open] summary::after{content:"⌃"}
+.set{padding:0 16px 14px;display:grid;gap:6px}
+.set .row span{width:7.5em}
+.set p{margin:0 0 6px;font-size:13px;color:var(--mute)}
+.chk{display:flex;align-items:center;gap:10px;min-height:44px;font-size:15px}
+.chk input{width:22px;height:22px;accent-color:var(--acc)}
+.seg.small button{min-height:40px;font-size:15px}
+.info{max-width:1500px;margin:0 auto;padding:10px max(2.5vw,14px) 40px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.info h3{margin:0 0 8px;font:700 22px/1.1 "Barlow Condensed",sans-serif}
+.info ol,.info ul{margin:0;padding-left:20px;color:#c9ced6;font-size:15px}
+.info li{margin:4px 0}
+.info b{color:var(--ink)}
+#compat{list-style:none;padding:0}
+#compat li::before{content:"✓";color:var(--ok);margin-right:8px;font-weight:700}
+#compat li.no::before{content:"!";color:#f2b33d}
+.foot{text-align:center;color:#69717c;font-size:13px;padding:0 16px 30px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#22262d;border:1px solid var(--line);padding:12px 18px;border-radius:12px;font-size:15px;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90vw;text-align:center;z-index:9}
+.toast.show{opacity:1}
+#tapgate{position:fixed;inset:0;background:rgba(5,6,8,.82);display:none;place-items:center;z-index:8;font:700 28px/1.3 "Barlow Condensed";text-align:center;padding:20px}
+#tapgate.show{display:grid}
+[hidden]{display:none!important}
+@media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}.info{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.cars{grid-template-columns:repeat(3,minmax(0,1fr))}.start{font-size:24px;min-height:64px}.gpsrow{grid-template-columns:1fr}.gpsrow .revbtn{width:100%}.pedals{gap:8px}.revbtn{font-size:22px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><svg viewBox="0 0 32 32"><path d="M5 22a11 11 0 1 1 22 0" fill="none" stroke="#ff6a1a" stroke-width="3.2" stroke-linecap="round"/><path d="M16 22 23 12" stroke="#eef1f4" stroke-width="2.6" stroke-linecap="round"/><circle cx="16" cy="22" r="2.6" fill="#eef1f4"/></svg>Motorlyd</div>
+  <div class="pills"><span id="pGps" class="pill">GPS av</span><span id="pEng" class="pill">Motor av</span></div>
+</header>
+
+<main class="grid">
+  <section class="card dash">
+    <div class="gauge"><svg id="g" viewBox="0 0 300 262" aria-hidden="true"></svg>
+      <div class="read"><div id="spd">0</div><div id="unit">km/h</div><div id="gear">N</div><div id="rpmt">0 o/min</div></div>
+    </div>
+    <div class="thr"><span>Gass</span><div class="bar"><i id="thrb"></i></div></div>
+
+    <div id="pedals" class="pedals">
+      <div class="pedal brake" id="brake"><small>BREMS</small><div class="plate"></div></div>
+      <button class="revbtn" id="rev1">REV<small>hold inne</small></button>
+      <div class="pedal gas" id="gas"><small>GASS</small><div class="plate tall"><div class="hold">HOLD FART</div><div class="lvl"></div></div></div>
+    </div>
+
+    <div id="gpsrow" class="gpsrow" hidden>
+      <div class="gpsbox"><div>GPS-fart<b id="gSpd">–</b></div><div>Nøyaktighet<b id="gAcc">–</b></div><div>Akselerasjon<b id="gA">–</b></div></div>
+      <button class="revbtn" id="rev2">REV<small>hold inne ved stopp</small></button>
+    </div>
+    <p class="hint" id="hint">Prøvekjøring reagerer med en gang. På veien gir GPS litt forsinkelse (ca. et halvt sekund).</p>
+  </section>
+
+  <section class="card side">
+    <button id="start" class="start"><span class="ring"></span><span id="startTxt">START MOTOR</span></button>
+    <div class="hero" id="hero"></div>
+    <div class="carinfo"><h2 id="cname"></h2><p id="cspec"></p></div>
+    <div class="cars" id="cars"></div>
+    <div class="seg" id="mode"><button data-m="gps">GPS-kjøring</button><button data-m="test">Prøvekjøring</button></div>
+    <button id="demo" class="demo">▶ Spill av demokjøring</button>
+    <label class="row">Volum <output id="volo">100 %</output><input type="range" id="vol" min="0" max="100" value="100"></label>
+    <details class="more"><summary>Flere innstillinger</summary>
+      <div class="set">
+        <label class="row"><span>Intensitet</span><output id="into">60</output><input type="range" id="int" min="0" max="100"></label>
+        <p>Hvor ivrig akselerasjon blir til gass, og hvor høyt den skifter gir.</p>
+        <label class="row"><span>Karakter</span><output id="chro">50</output><input type="range" id="chr" min="0" max="100"></label>
+        <p>Fra dempet originalanlegg til ujevn kam og åpne rør.</p>
+        <label class="row"><span>Smell</span><output id="cro">50</output><input type="range" id="cr" min="0" max="100"></label>
+        <p>Hvor mye eksosen knitrer og smeller når du slipper gassen. 0 = helt rent.</p>
+        <div class="seg small" id="units"><button data-u="kmh">km/h</button><button data-u="mph">mph</button></div>
+        <label class="chk"><input type="checkbox" id="auto"> Start sist brukte motor automatisk når siden åpnes</label>
+      </div>
+    </details>
+  </section>
+</main>
+
+<section class="info">
+  <div class="card"><h3>Bruk i Teslaen</h3><ol>
+    <li>Åpne siden i Tesla-nettleseren mens bilen står parkert, og <b>lagre den som bokmerke</b>.</li>
+    <li>Velg <b>GPS-kjøring</b>, trykk <b>Start motor</b> og <b>tillat posisjon</b> når du blir spurt.</li>
+    <li>Skru opp medievolumet. Lyden følger farten – gi mer gass for høyere turtall.</li>
+    <li>Står du på rødt? Hold inne <b>REV</b> for å ruse motoren.</li>
+  </ol></div>
+  <div class="card"><h3>Sjekk av denne nettleseren</h3><ul id="compat"></ul></div>
+  <div class="card"><h3>Greit å vite</h3><ul>
+    <li>Lyden spilles inne i bilen, ikke på Boombox-høyttaleren ute.</li>
+    <li>Musikk og radio kan gå samtidig.</li>
+    <li>Hold siden åpen – lyden stopper når nettleseren legges i bakgrunnen.</li>
+    <li>All lyd lages live i nettleseren. Posisjonen brukes bare til å måle fart og sendes ingen steder.</li>
+    <li>Hold volumet fornuftig: motorlyd kan skjule sirener og varsler.</li>
+  </ul></div>
+</section>
+<p class="foot">Privat bruk · motortypene er beskrivelser av lydstil, ikke etterligninger av bestemte bilmerker.</p>
+<div class="toast" id="toast"></div>
+<div id="tapgate">Trykk hvor som helst for å starte motoren</div>
+
+<script>
+/* ===================== LYDMOTOR (kjører i AudioWorklet eller ScriptProcessor) ===================== */
+class EngineDSP{
+  constructor(sr){this.sr=sr;this.c=null;this.P=0;this.base=0;this.k=0;this.na=0;this.rpm=0;this.load=0;this.tr=0;this.tl=0;this.on=0;this.amp=0;this.s=987654321;this.B=[];this.pop=0;this.plp=0;this.boost=0;this.bov=0;this.blp=0;this.wp=0;this.tp=0;this.cl=0;this.clp=0;this.crack=.5;this.chr=.5;this.e=[0,0,0,0];this.d0=[0,0];this.d1=[0,0];this.ev=[]}
+  rnd(){let x=this.s;x^=x<<13;x^=x>>>17;x^=x<<5;this.s=x>>>0;return this.s/4294967296}
+  msg(m){
+    if(m.cfg)this.set(m.cfg);
+    if(m.t){const prev=this.tl;this.tr=m.t.rpm;this.tl=m.t.load;this.on=m.t.on?1:0;
+      if(this.c&&this.c.turbo&&prev>.45&&m.t.load<.15&&this.boost>.25)this.bov=Math.max(this.bov,this.boost)}
+    if(m.p){if(m.p.crack!=null)this.crack=m.p.crack;if(m.p.chr!=null)this.chr=m.p.chr}
+  }
+  set(c){
+    this.c=c;const sr=this.sr;
+    if(c.electric){this.ev=[];return}
+    const n=c.cyl;const fire=c.fire||Array.from({length:n},(_,i)=>i/n);const banks=c.banks||'';
+    this.ev=fire.map((f,i)=>({f,b:banks[i]==='R'?1:0,a:1-(c.vary||.1)*this.rnd()}));
+    this.B=[0,1].map(b=>({p:0,r:c.res.map(([f,bw,g])=>{const ff=f*(b?1.07:1);const r=Math.exp(-Math.PI*bw/sr);return{a1:2*r*Math.cos(2*Math.PI*ff/sr),a2:r*r,g:g*(1-r)*5,y1:0,y2:0}})}));
+    this.pd=Math.exp(-1/(sr*(c.pulse||.0008)));this.P=0;this.base=0;this.k=0;this.na=this.ev[0].f;this.norm=1;
+    if(!this.cal){const t=new EngineDSP(sr);t.cal=1;t.set(c);t.chr=.5;t.crack=0;t.tr=t.rpm=c.red*.55;t.tl=t.load=1;t.on=t.amp=1;t.norm=1;t.drv=1e-4;
+      const n=Math.round(sr*.4),A=new Float32Array(n),Bf=new Float32Array(n);t.process(A,Bf,n);let q=0;for(let i=n>>1;i<n;i++)q+=A[i]*A[i];
+      const rms=Math.sqrt(q/(n-(n>>1)))/(.8e-4);this.norm=rms>0?.45/rms:1}
+  }
+  fire(e,rpm,ld,jit){
+    const c=this.c;const lumpy=rpm<c.idle*1.6?1.8:.6;
+    const a=e.a*(.14+.86*ld)*(1+jit*lumpy*(this.rnd()*2-1));
+    if(ld<.08&&rpm>c.idle*2.2&&this.rnd()<this.crack*(c.crack==null?.5:c.crack)*.16)this.pop=Math.max(this.pop,.45+this.rnd()*.9);
+    this.B[e.b].p+=a;
+    if(c.clatter)this.cl=Math.max(this.cl,.5+.5*this.rnd());
+  }
+  process(L,R,n){
+    const c=this.c;if(!c){for(let i=0;i<n;i++){L[i]=0;R[i]=0}return}
+    const sr=this.sr,kr=1-Math.exp(-1/(sr*.04)),kl=1-Math.exp(-1/(sr*.03)),ka=1-Math.exp(-1/(sr*.08));
+    const popd=Math.exp(-1/(sr*.014)),bovd=Math.exp(-1/(sr*.35)),cld=Math.exp(-1/(sr*.0005));
+    const chr=this.chr,nz=(c.noise||.3)*(.5+chr),jit=(c.jit||.05)*(.4+1.2*chr),drive=(this.drv||(c.drive||1.5)*(.8+.4*chr))*(c.electric?1:this.norm);
+    const TAU=2*Math.PI;
+    for(let i=0;i<n;i++){
+      this.rpm+=(this.tr-this.rpm)*kr;this.load+=(this.tl-this.load)*kl;this.amp+=(this.on-this.amp)*ka;
+      const rpm=this.rpm>0?this.rpm:0,ld=this.load;let s0=0,s1=0,com=0;
+      if(c.electric){
+        const f=38+rpm/60*1.25;const E=this.e;
+        E[0]+=f/sr;E[1]+=f*1.501/sr;E[2]+=f*.5/sr;E[3]+=f*6.02/sr;for(let j=0;j<4;j++)if(E[j]>=1)E[j]-=1;
+        const saw=2*E[0]-1,sq=Math.sin(TAU*E[1]),sub=Math.sin(TAU*E[2]),wh=Math.sin(TAU*E[3]);
+        const g=(.3+.7*ld);const v=(saw*.16+sq*.2*(.3+ld)+sub*.32+wh*.05*(.2+ld))*g;
+        s0=v*(1+.15*Math.sin(TAU*E[2]*3));s1=v;
+      }else{
+        this.P+=rpm/120/sr;
+        let guard=0;
+        while(this.P>=this.na&&guard++<16){const e=this.ev[this.k];this.fire(e,rpm,ld,jit);this.k++;if(this.k>=this.ev.length){this.k=0;this.base++}this.na=this.base+this.ev[this.k].f}
+        if(this.base>5000){this.P-=5000;this.base-=5000;this.na-=5000}
+        this.pop*=popd;const pn=(this.rnd()*2-1)*this.pop;this.plp+=(pn-this.plp)*.35;
+        for(let b=0;b<2;b++){
+          const B=this.B[b];B.p*=this.pd;const w=this.rnd()*2-1;
+          const x=B.p*(1+nz*w*(.35+ld))+this.plp*1.3;let y=0;
+          const rs=B.r;for(let j=0;j<rs.length;j++){const r=rs[j];const v=r.a1*r.y1-r.a2*r.y2+x*r.g;r.y2=r.y1;r.y1=v;y+=v}
+          y+=B.p*(c.thump||.25);
+          if(b)s1=y;else s0=y;
+        }
+        if(c.clatter){this.cl*=cld;const cn=this.rnd()*2-1;com+=(cn-this.clp)*this.cl*c.clatter*.18;this.clp=cn}
+        if(c.sc){this.wp+=rpm/60*(c.scr||7)/sr;if(this.wp>=1)this.wp-=1;com+=Math.sin(TAU*this.wp)*c.sc*.12*Math.pow(rpm/c.red,1.5)*(.3+.7*ld)}
+        if(c.turbo){
+          const tg=ld>.4?Math.min(1,rpm/c.red*1.5)*ld:0;this.boost+=(tg-this.boost)/(sr*(tg>this.boost?.7:.18));
+          this.tp+=(1600+6400*this.boost)/sr;if(this.tp>=1)this.tp-=1;com+=Math.sin(TAU*this.tp)*this.boost*this.boost*c.turbo*.045;
+          this.bov*=bovd;const bn=this.rnd()*2-1;this.blp+=(bn-this.blp)*.45;com+=(bn-this.blp)*this.bov*c.turbo*.16;
+        }
+      }
+      let l=s0*.72+s1*.28+com,r=s1*.72+s0*.28+com;
+      // DC-sperre
+      const dl=l-this.d0[0]+.996*this.d0[1];this.d0[0]=l;this.d0[1]=dl;
+      const dr=r-this.d1[0]+.996*this.d1[1];this.d1[0]=r;this.d1[1]=dr;
+      L[i]=Math.tanh(dl*drive)*.8*this.amp;R[i]=Math.tanh(dr*drive)*.8*this.amp;
+    }
+  }
+}
+
+/* ===================== BILER ===================== */
+const CB='LRRLRLLR'; // crossplane V8: banksekvens
+const CARS=[
+ {id:'v8',name:'V8 Muskel',spec:'6,2 l crossplane V8 · 6 gir · doble eksosrør',style:'muscle',color:'#1d9be0',
+  cyl:8,banks:CB,idle:720,red:6800,gears:6,v1:72,vTop:290,res:[[92,55,1],[230,110,.6],[610,280,.25],[1500,700,.08]],noise:.35,jit:.10,pulse:.0012,drive:1.7,crack:.7,lp:3400},
+ {id:'v12',name:'V12 Italiensk',spec:'6,5 l V12 · 8 900 o/min · 7 girs dobbelclutch',style:'super',color:'#c8202c',
+  cyl:12,idle:950,red:8900,gears:7,v1:95,vTop:340,res:[[175,90,1],[520,200,.7],[1300,480,.35],[3100,1200,.12]],noise:.22,jit:.03,pulse:.0005,drive:1.35,crack:.4,lp:7000},
+ {id:'f6',name:'Flat-six GT',spec:'4,0 l boxer seks · 9 000 o/min · 7 girs PDK',style:'gt',color:'#e9ebee',
+  cyl:6,banks:'LRLRLR',idle:900,red:9000,gears:7,v1:70,vTop:318,res:[[140,80,1],[430,160,.7],[1100,340,.4],[2600,900,.18]],noise:.42,jit:.04,pulse:.0007,drive:1.8,crack:.6,lp:7500},
+ {id:'sc',name:'V8 Kompressor',spec:'6,2 l V8 med kompressor · 8 gir · hylende hvin',style:'muscle2',color:'#2a2d33',
+  cyl:8,banks:CB,idle:800,red:6300,gears:8,v1:68,vTop:320,res:[[84,50,1],[205,110,.7],[560,260,.3],[1400,600,.1]],noise:.45,jit:.08,pulse:.0012,drive:2.0,crack:.8,sc:.4,scr:7.5,lp:3200},
+ {id:'shift',name:'Girgalning',spec:'Flat-six · 9 000 o/min · 10 korte gir · topper på 120 km/h',style:'hatch',color:'#2f6b3a',
+  cyl:6,banks:'LRLRLR',idle:900,red:9000,gears:10,v1:20,vTop:120,res:[[140,80,1],[430,160,.7],[1100,340,.4],[2600,900,.18]],noise:.45,jit:.05,pulse:.0007,drive:1.8,crack:.8,lp:7500},
+ {id:'v10',name:'V10 Superbil',spec:'5,2 l V10 · 8 700 o/min · skrikende toppturtall',style:'super',color:'#f2c230',
+  cyl:10,idle:1000,red:8700,gears:7,v1:90,vTop:330,res:[[160,90,1],[470,180,.7],[1200,420,.35],[2900,1000,.15]],noise:.32,jit:.04,pulse:.0006,drive:1.6,crack:.6,lp:6500},
+ {id:'i5',name:'Rally-femmer',spec:'2,5 l rekkefem med turbo · 7 200 o/min · blow-off',style:'hatch',color:'#e6e6e6',
+  cyl:5,idle:900,red:7200,gears:6,v1:58,vTop:250,res:[[118,70,1],[330,150,.6],[900,340,.3],[2200,800,.12]],noise:.4,jit:.06,vary:.22,pulse:.0009,drive:1.7,crack:.8,turbo:.6,lp:5000},
+ {id:'i4',name:'Turbo-firer',spec:'2,0 l rekkefire med turbo · 7 600 o/min',style:'sedan',color:'#3d5fd9',
+  cyl:4,idle:850,red:7600,gears:6,v1:55,vTop:250,res:[[150,90,1],[420,180,.6],[1150,400,.35],[2800,900,.15]],noise:.5,jit:.05,pulse:.0008,drive:1.7,crack:.6,turbo:.8,lp:5500},
+ {id:'rot',name:'Wankel',spec:'1,3 l to-rotor · 9 000 o/min · brap-brap på tomgang',style:'gt',color:'#d6402a',
+  cyl:4,idle:1000,red:9000,gears:5,v1:65,vTop:260,res:[[200,120,1],[600,260,.8],[1600,600,.4],[3500,1400,.2]],noise:.6,jit:.13,pulse:.0014,drive:2.0,crack:1,lp:6000},
+ {id:'dsl',name:'Diesel-pickup',spec:'6,7 l V8 diesel · 10 gir · turbo og ventilknatter',style:'pickup',color:'#7b8590',
+  cyl:8,idle:650,red:3600,gears:10,v1:32,vTop:180,res:[[70,50,1],[175,100,.6],[470,250,.3],[1200,600,.2]],noise:.6,jit:.05,pulse:.0015,drive:1.9,crack:.1,turbo:.9,clatter:1,lp:2800},
+ {id:'vt',name:'V-twin sykkel',spec:'1,2 l 45° V-twin · 6 gir · potato-potato',style:'bike',color:'#111111',
+  cyl:2,fire:[0,315/720],idle:1000,red:8500,gears:6,v1:70,vTop:250,res:[[105,65,1],[290,140,.7],[780,320,.35],[2000,800,.15]],noise:.45,jit:.09,pulse:.0013,drive:1.9,crack:.9,lp:4200},
+ {id:'ev',name:'Sci-fi elektrisk',spec:'Elektrisk motor · syntetisk turbinhvin · ett gir',style:'future',color:'#9aa3ad',
+  electric:true,idle:0,red:18000,gears:1,v1:260,vTop:260,lp:9000},
+];
+
+/* ===================== BIL-TEGNINGER ===================== */
+const BODY={
+ muscle:['M18 88 L22 70 Q26 62 60 60 L104 58 L132 40 Q140 36 175 36 L205 38 L238 58 L292 62 Q304 64 306 76 L306 90 Q300 94 280 94 L267 94 A21 21 0 0 0 225 94 L102 94 A21 21 0 0 0 60 94 L30 94 Q18 94 18 88Z','M112 58 L136 43 Q142 40 172 40 L200 42 L226 58Z',[81,246]],
+ muscle2:['M16 88 L20 68 Q24 60 58 58 L100 56 L128 38 Q136 34 172 34 L204 36 L240 56 L294 60 Q306 62 308 76 L308 90 Q302 94 282 94 L267 94 A21 21 0 0 0 225 94 L102 94 A21 21 0 0 0 60 94 L28 94 Q16 94 16 88Z','M110 56 L134 41 Q140 38 170 38 L200 40 L228 56Z',[81,246]],
+ super:['M14 86 Q14 76 30 72 L90 62 Q130 46 170 38 Q200 34 220 40 L262 58 Q298 62 306 72 L308 88 Q306 94 290 94 L267 94 A21 21 0 0 0 225 94 L102 94 A21 21 0 0 0 60 94 L24 94 Q14 94 14 86Z','M120 58 Q150 44 176 41 Q198 39 214 44 L236 58Z',[81,246]],
+ gt:['M16 88 Q16 74 40 70 L84 64 Q112 40 160 34 Q205 32 236 52 L280 62 Q304 66 306 80 L306 90 Q304 94 290 94 L267 94 A21 21 0 0 0 225 94 L102 94 A21 21 0 0 0 60 94 L26 94 Q16 94 16 88Z','M104 62 Q128 42 160 39 Q196 38 220 56Z',[81,246]],
+ hatch:['M16 88 L18 64 Q20 56 34 52 L66 34 Q74 30 96 30 L190 32 Q206 34 222 48 L240 60 L290 64 Q304 66 306 78 L306 90 Q304 94 292 94 L267 94 A21 21 0 0 0 225 94 L102 94 A21 21 0 0 0 60 94 L24 94 Q16 94 16 88Z','M70 52 L88 36 L186 37 Q198 38 210 50 L218 58 L66 58Z',[81,246]],
+ sedan:['M16 88 L20 70 Q24 62 56 60 L96 58 L128 38 Q136 34 168 34 L206 36 Q218 38 236 56 L290 62 Q304 64 306 78 L306 90 Q304 94 292 94 L267 94 A21 21 0 0 0 225 94 L102 94 A21 21 0 0 0 60 94 L26 94 Q16 94 16 88Z','M106 58 L132 41 Q138 38 166 38 L204 40 Q214 42 228 58Z',[81,246]],
+ pickup:['M14 90 L14 62 Q14 56 22 56 L124 56 L132 28 Q134 24 142 24 L196 24 Q204 24 210 32 L228 56 L296 60 Q306 62 306 72 L306 92 Q306 96 296 96 L270 96 A23 23 0 0 0 224 96 L104 96 A23 23 0 0 0 58 96 L20 96 Q14 96 14 90Z','M140 30 L194 30 Q200 30 204 36 L218 54 L136 54Z',[81,247]],
+ future:['M12 86 Q20 70 70 62 Q130 36 190 36 Q240 38 280 60 Q306 68 308 84 Q306 94 290 94 L267 94 A21 21 0 0 0 225 94 L102 94 A21 21 0 0 0 60 94 L22 94 Q12 94 12 86Z','M110 58 Q150 42 192 41 Q232 43 258 58Z',[81,246]],
+};
+function carSVG(car,small){
+  const id='c'+car.id+(small?'s':'');
+  if(car.style==='bike'){
+    return `<svg viewBox="0 0 320 120"><ellipse cx="160" cy="112" rx="130" ry="6" fill="#000" opacity=".5"/>
+    <g fill="none" stroke="#9aa3ad" stroke-width="5" stroke-linecap="round"><path d="M72 90 L120 62 L196 62 L250 90"/><path d="M250 90 L226 40 L210 34"/><path d="M120 62 L150 90 L196 62"/></g>
+    <path d="M110 58 Q130 40 170 42 L196 50 L192 62 L120 64Z" fill="${car.color}" stroke="#444" stroke-width="2"/>
+    <path d="M74 56 Q90 50 112 56 L110 62 L76 64Z" fill="#222"/>
+    <rect x="128" y="64" width="44" height="22" rx="6" fill="#555"/><path d="M150 86 L70 96" stroke="#c9ced6" stroke-width="6" stroke-linecap="round"/>
+    ${[72,250].map(x=>`<circle cx="${x}" cy="90" r="25" fill="#0c0d0f" stroke="#2c2f34" stroke-width="5"/><circle cx="${x}" cy="90" r="9" fill="#888"/>`).join('')}</svg>`;
+  }
+  const [b,w,wh]=BODY[car.style];const y=car.style==='pickup'?96:94,r=car.style==='pickup'?20:18;
+  return `<svg viewBox="0 0 320 120"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></linearGradient></defs>
+  <ellipse cx="163" cy="${y+12}" rx="140" ry="7" fill="#000" opacity=".55"/>
+  <path d="${b}" fill="${car.color}"/><path d="${b}" fill="url(#${id})"/>
+  <path d="${w}" fill="#0f1318" opacity=".92"/>
+  <path d="M30 80 L300 80" stroke="#000" stroke-opacity=".18" stroke-width="2"/>
+  ${car.style==='future'?'<path d="M260 66 L304 74" stroke="#ff6a1a" stroke-width="3" stroke-linecap="round"/>':'<rect x="290" y="68" width="14" height="6" rx="3" fill="#ffd9a8"/>'}
+  ${wh.map(x=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#0c0d0f"/><circle cx="${x}" cy="${y}" r="${r*.58}" fill="#7d848d"/><circle cx="${x}" cy="${y}" r="${r*.2}" fill="#2a2d31"/>`).join('')}</svg>`;
+}
+
+/* ===================== TILSTAND ===================== */
+const $=s=>document.querySelector(s);
+const S={car:'v8',vol:100,mode:'gps',int:60,chr:50,cr:50,unit:'kmh',auto:false};
+try{Object.assign(S,JSON.parse(localStorage.getItem('motorlyd')||'{}'))}catch(e){}
+if(!CARS.find(c=>c.id===S.car))S.car='v8';
+const save=()=>{try{localStorage.setItem('motorlyd',JSON.stringify(S))}catch(e){}};
+let car=CARS.find(c=>c.id===S.car);
+const st={on:false,v:0,gear:1,rpm:0,load:0,th:0,br:0,hold:false,shiftT:0,blipT:0,rev:false,revR:0,startT:-1,demo:null,lim:0,shown:0};
+const gps={id:null,status:'off',fixV:0,fixT:0,a:0,acc:null,last:null,disp:0};
+
+/* ===================== LYD ===================== */
+let ctx=null,send=()=>{},lp=null,master=null,dspLocal=null;
+async function initAudio(){
+  if(ctx)return;
+  ctx=new (window.AudioContext||window.webkitAudioContext)({latencyHint:'interactive'});
+  lp=ctx.createBiquadFilter();lp.type='lowpass';lp.Q.value=.7;lp.frequency.value=4000;
+  master=ctx.createGain();master.gain.value=S.vol/100;
+  const comp=ctx.createDynamicsCompressor();comp.threshold.value=-10;comp.ratio.value=4;
+  lp.connect(master);master.connect(comp);comp.connect(ctx.destination);
+  const src=EngineDSP.toString()+`
+class P extends AudioWorkletProcessor{constructor(){super();this.d=new EngineDSP(sampleRate);this.port.onmessage=e=>this.d.msg(e.data)}
+process(i,o){const out=o[0];this.d.process(out[0],out[1]||out[0],out[0].length);return true}}
+registerProcessor('motor',P);`;
+  let node=null;
+  if(ctx.audioWorklet){
+    for(const url of [URL.createObjectURL(new Blob([src],{type:'application/javascript'})),'data:application/javascript;charset=utf-8,'+encodeURIComponent(src)]){
+      try{await ctx.audioWorklet.addModule(url);node=new AudioWorkletNode(ctx,'motor',{numberOfInputs:0,outputChannelCount:[2]});env.engine='AudioWorklet @ '+ctx.sampleRate+' Hz';break}catch(e){}
+    }
+  }
+  if(node){send=m=>node.port.postMessage(m)}
+  else{
+    dspLocal=new EngineDSP(ctx.sampleRate);node=ctx.createScriptProcessor(1024,0,2);
+    node.onaudioprocess=e=>dspLocal.process(e.outputBuffer.getChannelData(0),e.outputBuffer.getChannelData(1),e.outputBuffer.length);
+    send=m=>dspLocal.msg(m);env.engine='ScriptProcessor (reserve) @ '+ctx.sampleRate+' Hz';
+  }
+  node.connect(lp);
+  send({cfg:car});send({p:{crack:S.cr/100,chr:S.chr/100}});
+  renderCompat();
+}
+
+/* ===================== GIR OG FYSIKK ===================== */
+const kmh=()=>st.v*3.6;
+function vG(g){if(car.gears<2)return car.vTop;const q=Math.pow(car.vTop/car.v1,1/(car.gears-1));return car.v1*Math.pow(q,g-1)}
+const rpmIn=g=>kmh()/vG(g)*car.red;
+const clamp=(x,a,b)=>x<a?a:x>b?b:x;
+
+function tick(dt){
+  const now=performance.now();
+  const I=S.int/100;
+  // ---- inndata
+  let th=0,br=0;
+  if(st.demo){const d=demoAt((now-st.demo)/1000);if(!d){stopDemo()}else{th=d[0];br=d[1];st.rev=!!d[2]}}
+  else if(S.mode==='test'){th=st.th;br=st.br}
+  // ---- fart
+  let aEst=0;
+  if(S.mode==='gps'&&!st.demo){
+    const age=(now-gps.fixT)/1000;
+    const tgt=gps.fixT?Math.max(0,gps.fixV+gps.a*Math.min(age,1.2)):0;
+    const prev=st.v;st.v+=(tgt-st.v)*Math.min(1,dt*3.5);if(age>6)st.v*=.98;
+    aEst=gps.a;
+    st.load=st.v<.5?0:aEst<-.35?0:clamp((.16+aEst/2.6)*(.55+I),0,1);
+  }else{
+    if(st.hold&&th>0){th=0;st.load=.28;}
+    else st.load=th;
+    const g=st.gear;const accMax=car.electric?7:5.8*Math.pow(car.v1/vG(g),.65);
+    const drag=st.v>.1?.12+.00038*st.v*st.v:0;
+    let a=th*accMax*(st.shiftT>0?0:1)-br*9.5-drag;
+    if(st.hold&&!br&&st.th>0)a=0;
+    if(rpmIn(g)>=car.red&&g>=car.gears&&a>0)a=0;
+    st.v=Math.max(0,st.v+a*dt);if(br&&st.v<.3)st.v=0;
+    if(br)st.load=0;
+  }
+  // ---- gir
+  const v=kmh();
+  if(car.electric){st.gear=1}
+  else{
+    if(v<1.5)st.gear=1;
+    const up=car.red*(.42+.5*clamp(st.load*(.5+I),0,1));
+    if(st.shiftT<=0){
+      if(st.gear<car.gears&&(rpmIn(st.gear)>up||rpmIn(st.gear)>car.red*.985)){st.gear++;st.shiftT=car.gears>8?.09:.14;flashGear()}
+      else if(st.gear>1&&rpmIn(st.gear)<car.red*.27){st.gear--;if(st.load<.2){st.blipT=.16}flashGear()}
+      else if(st.gear>1&&st.load>.8&&rpmIn(st.gear)<car.red*.5&&rpmIn(st.gear-1)<car.red*.82){st.gear--;st.blipT=.12;flashGear()}
+    }
+  }
+  st.shiftT-=dt;st.blipT-=dt;
+  // ---- turtall
+  const stopped=v<2;
+  if(st.rev&&stopped){st.revR+=(car.red*.88-car.idle-st.revR)*Math.min(1,dt*3.2)}else st.revR+=(0-st.revR)*Math.min(1,dt*2.6);
+  let rpm,load=st.load;
+  if(car.electric){rpm=v/car.vTop*car.red;if(stopped)rpm=Math.max(rpm,st.revR*.6);load=Math.max(load,st.rev&&stopped?.9:0)}
+  else if(stopped&&st.gear===1){
+    rpm=car.idle+st.revR+(S.mode!=='gps'||st.demo?th*car.red*.3:0);
+    load=st.rev?.95:(st.revR>200?0:.12+th*.6);
+  }else{
+    rpm=rpmIn(st.gear);
+    if(st.gear===1)rpm=Math.max(rpm,car.idle+load*car.red*.32*clamp(1-v/(car.v1*.45),0,1));
+    rpm=Math.max(rpm,car.idle*1.02);
+    if(load<.05)load=.06;
+  }
+  if(st.shiftT>0)load=0;
+  if(st.blipT>0)load=.55;
+  if(rpm>=car.red*.99&&!car.electric){rpm=car.red;st.lim+=dt;if(Math.floor(st.lim*14)%2)load=0}
+  // ---- start-sekvens
+  if(st.startT>=0){
+    st.startT+=dt;const t=st.startT;
+    if(car.electric){rpm*=Math.min(1,t/1.2)}
+    else if(t<.75){rpm=180+60*Math.sin(t*38);load=.12}
+    else if(t<1.5){rpm=car.idle*(1+1.1*Math.sin((t-.75)/.75*Math.PI));load=t<1.1?.7:0}
+    else st.startT=-1;
+  }
+  st.rpm=rpm;st.out=load;
+  send({t:{rpm,load,on:st.on}});
+  if(lp&&ctx){const f=clamp(car.lp*(.55+.9*S.chr/100)*(.5+.7*rpm/car.red+.3*load),250,16000);lp.frequency.setTargetAtTime(f,ctx.currentTime,.05)}
+}
+
+/* ===================== DEMO ===================== */
+// [tid s, gass, brems, rev]
+const DEMO=[[0,0,0,0],[1,0,0,1],[1.6,0,0,0],[2.4,0,0,1],[2.9,0,0,0],[4,1,0,0],[13,1,0,0],[13.01,0,0,0],[16,0,0,0],[16.01,.35,0,0],[20,.35,0,0],[20.01,.8,0,0],[24,.8,0,0],[24.01,0,0,0],[26,0,.5,0],[33,0,.5,0]];
+function demoAt(t){if(t>DEMO[DEMO.length-1][0])return null;let r=DEMO[0];for(const d of DEMO){if(d[0]<=t)r=d}return [r[1],r[2],r[3]]}
+async function startDemo(){
+  if(!st.on)await startEngine();
+  st.v=0;st.gear=1;st.demo=performance.now();$('#demo').classList.add('on');$('#demo').textContent='■ Stopp demo';
+}
+function stopDemo(){st.demo=null;st.rev=false;$('#demo').classList.remove('on');$('#demo').textContent='▶ Spill av demokjøring'}
+
+/* ===================== GPS ===================== */
+function hav(a,b){const R=6371000,t=Math.PI/180;const dLa=(b.latitude-a.latitude)*t,dLo=(b.longitude-a.longitude)*t;const x=Math.sin(dLa/2)**2+Math.cos(a.latitude*t)*Math.cos(b.latitude*t)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+function startGPS(){
+  if(gps.id!=null)return;
+  if(!navigator.geolocation){gps.status='none';updPills();return}
+  gps.status='wait';updPills();
+  gps.id=navigator.geolocation.watchPosition(p=>{
+    const c=p.coords,t=p.timestamp||Date.now();let spd=c.speed;
+    if((spd==null||isNaN(spd))&&gps.last){const dt=(t-gps.last.t)/1000;if(dt>.4){spd=hav(gps.last.c,c)/dt}else spd=gps.fixV}
+    if(spd==null||isNaN(spd))spd=0;
+    if(c.accuracy>60&&gps.last)spd=gps.fixV;
+    const now=performance.now();
+    if(gps.fixT){const dt=(now-gps.fixT)/1000;if(dt>.2){const a=(spd-gps.fixV)/dt;gps.a=gps.a*.4+clamp(a,-9,9)*.6}}
+    gps.fixV=spd;gps.fixT=now;gps.acc=c.accuracy;gps.last={c:{latitude:c.latitude,longitude:c.longitude},t};
+    gps.status='ok';env.gps='innvilget';updPills();renderCompat();
+  },e=>{gps.status=e.code===1?'denied':'err';if(e.code===1){env.gps='nektet';toast('Posisjon er nektet. Tillat posisjon for denne siden i nettleseren, eller bruk Prøvekjøring.')}updPills();renderCompat()},{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+}
+function stopGPS(){if(gps.id!=null)navigator.geolocation.clearWatch(gps.id);gps.id=null;gps.status='off';gps.fixT=0;updPills()}
+
+/* ===================== MOTOR AV/PÅ ===================== */
+let wake=null;
+async function startEngine(){
+  await initAudio();try{await ctx.resume()}catch(e){}
+  send({cfg:car});
+  st.on=true;st.startT=0;st.gear=1;st.lim=0;
+  if(S.mode==='gps')startGPS();
+  try{wake=await navigator.wakeLock?.request('screen')}catch(e){}
+  updStart();updPills();
+}
+function stopEngine(){st.on=false;stopDemo();try{wake?.release()}catch(e){}updStart();updPills()}
+
+/* ===================== UI ===================== */
+const RS=118,CX=150,CY=150;
+const pt=(f,r)=>{const a=(135+270*f)*Math.PI/180;return[CX+r*Math.cos(a),CY+r*Math.sin(a)]};
+const arc=(f0,f1,r)=>{const[a,b]=pt(f0,r),[c,d]=pt(f1,r);return`M${a.toFixed(1)} ${b.toFixed(1)}A${r} ${r} 0 ${(f1-f0)*270>180?1:0} 1 ${c.toFixed(1)} ${d.toFixed(1)}`};
+let gMax=8;
+function drawGauge(){
+  const ev=car.electric;gMax=ev?20:Math.ceil(car.red/1000)+1;const step=ev?2:1;
+  let h=`<path d="${arc(0,1,RS)}" fill="none" stroke="#23272e" stroke-width="12" stroke-linecap="round"/>`;
+  if(!ev)h+=`<path d="${arc(car.red/1000/gMax,1,RS)}" fill="none" stroke="#d3263a" stroke-width="12" opacity=".85"/>`;
+  h+=`<path id="garc" d="${arc(0,1,RS)}" pathLength="1000" fill="none" stroke="url(#og)" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 1000"/>`;
+  for(let i=0;i<=gMax*2;i++){const f=i/(gMax*2),maj=i%2===0;const[a,b]=pt(f,RS-14),[c,d]=pt(f,RS-(maj?30:22));h+=`<line x1="${a}" y1="${b}" x2="${c}" y2="${d}" stroke="${f*gMax*1000>=car.red&&!ev?'#ff5a6a':'#c9ced6'}" stroke-width="${maj?3:1.6}" stroke-linecap="round"/>`;
+    if(maj&&(i/2)%step===0){const[x,y]=pt(f,RS-44);h+=`<text x="${x}" y="${y+6}" text-anchor="middle" fill="#c9ced6" font-family="Barlow Condensed,Arial Narrow,sans-serif" font-weight="700" font-size="19">${i/2}</text>`}}
+  $('#g').innerHTML=`<defs><linearGradient id="og" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#ff5a12"/><stop offset="1" stop-color="#ff9a4a"/></linearGradient></defs>`+h;
+}
+function render(){
+  const v=S.unit==='mph'?kmh()/1.609:kmh();
+  $('#spd').textContent=Math.round(v);
+  const rpm=st.on?st.rpm:0;
+  const f=car.electric?clamp(st.out*.9+rpm/car.red*.3,0,1):clamp(rpm/1000/gMax,0,1);
+  $('#garc')?.setAttribute('stroke-dasharray',`${(f*1000).toFixed(0)} 1000`);
+  $('#gear').textContent=car.electric?'D':(st.on?(kmh()<2&&st.gear===1?'N':st.gear):'–');
+  $('#rpmt').textContent=car.electric?`${Math.round(st.on?(st.out*300+rpm/car.red*120):0)} kW`:`${Math.round(rpm/10)*10} o/min`;
+  $('#thrb').style.width=((st.on?st.out:0)*100).toFixed(0)+'%';
+  if(S.mode==='gps'){$('#gSpd').textContent=gps.fixT?Math.round(gps.fixV*3.6/(S.unit==='mph'?1.609:1))+' '+(S.unit==='mph'?'mph':'km/h'):'–';$('#gAcc').textContent=gps.acc!=null?'±'+Math.round(gps.acc)+' m':'–';$('#gA').textContent=gps.fixT?gps.a.toFixed(1)+' m/s²':'–'}
+}
+let gearFlash=0;function flashGear(){const g=$('#gear');g.classList.add('shift');clearTimeout(gearFlash);gearFlash=setTimeout(()=>g.classList.remove('shift'),220)}
+function updStart(){$('#start').classList.toggle('on',st.on);$('#startTxt').textContent=st.on?'SLÅ AV MOTOR':'START MOTOR'}
+function updPills(){
+  const g=$('#pGps');g.className='pill';
+  const t={off:'GPS ikke i bruk',wait:'Venter på GPS',ok:'GPS aktiv',denied:'GPS nektet',err:'GPS-feil',none:'Ingen GPS'}[gps.status];
+  g.textContent=t;if(gps.status==='ok')g.classList.add('ok');else if(gps.status==='wait')g.classList.add('wait');else if(gps.status!=='off')g.classList.add('bad');
+  const e=$('#pEng');e.className='pill'+(st.on?' ok':'');e.textContent=st.on?'Motor går':'Motor av';
+}
+function selCar(id){
+  car=CARS.find(c=>c.id===id);S.car=id;save();st.gear=1;
+  $('#hero').innerHTML=carSVG(car);$('#cname').textContent=car.name;$('#cspec').textContent=car.spec;
+  document.querySelectorAll('#cars button').forEach(b=>b.classList.toggle('sel',b.dataset.id===id));
+  drawGauge();if(ctx){send({cfg:car})}if(st.on){st.startT=0}
+}
+function setMode(m){
+  S.mode=m;save();
+  document.querySelectorAll('#mode button').forEach(b=>b.classList.toggle('sel',b.dataset.m===m));
+  $('#pedals').hidden=m!=='test';$('#gpsrow').hidden=m!=='gps';
+  $('#hint').textContent=m==='gps'?'Lyden følger GPS-farten din med ca. et halvt sekunds forsinkelse. Gi mer gass for høyere turtall.':'Prøvekjøring reagerer med en gang. Trykk lenger ned på gasspedalen for mer gass – øverste felt holder farten.';
+  if(m==='gps'){st.th=0;st.br=0;if(st.on)startGPS()}else{stopGPS()}
+}
+function setUnit(u){S.unit=u;save();$('#unit').textContent=u==='mph'?'mph':'km/h';document.querySelectorAll('#units button').forEach(b=>b.classList.toggle('sel',b.dataset.u===u))}
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),4500)}
+const env={engine:null,gps:null};
+function renderCompat(){
+  const sec=window.isSecureContext,wa=!!(window.AudioContext||window.webkitAudioContext),aw=!!(window.AudioWorkletNode),geo=!!navigator.geolocation;
+  const items=[[sec,'Sikker tilkobling (HTTPS)'],[wa,'Web Audio'],[aw,'AudioWorklet'],[!!env.engine,'Lydmotor – '+(env.engine||'starter ved første trykk')],[geo,'Posisjon (GPS)'],[env.gps==='innvilget','Posisjonstillatelse – '+(env.gps||'spørres ved start i GPS-modus')]];
+  $('#compat').innerHTML=items.map(([ok,t])=>`<li class="${ok?'':'no'}">${t}</li>`).join('');
+}
+
+/* ===================== PEDALER ===================== */
+function pedal(el,fn){
+  const plate=el.querySelector('.plate');
+  const upd=e=>{const r=plate.getBoundingClientRect();const y=clamp((e.clientY-r.top)/r.height,0,1);fn(true,y)};
+  el.addEventListener('pointerdown',e=>{e.preventDefault();el.setPointerCapture(e.pointerId);el.classList.add('on');if(st.demo)stopDemo();if(!st.on)startEngine();upd(e)});
+  el.addEventListener('pointermove',e=>{if(el.classList.contains('on'))upd(e)});
+  const end=()=>{el.classList.remove('on');fn(false,0)};
+  el.addEventListener('pointerup',end);el.addEventListener('pointercancel',end);el.addEventListener('lostpointercapture',end);
+}
+pedal($('#gas'),(on,y)=>{const lvl=$('#gas .lvl');if(!on){st.th=0;st.hold=false;lvl.style.height='0';return}
+  if(y<.22){st.hold=true;st.th=.3;lvl.style.height='0'}else{st.hold=false;st.th=clamp((y-.22)/.7,.08,1);lvl.style.height=(st.th*78)+'%'}});
+pedal($('#brake'),(on,y)=>{st.br=on?clamp(.35+y*.8,.3,1):0});
+for(const id of ['#rev1','#rev2']){const b=$(id);
+  b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);if(!st.on)startEngine();st.rev=true;b.classList.add('on')});
+  const end=()=>{st.rev=false;b.classList.remove('on')};b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);b.addEventListener('lostpointercapture',end);
+  b.addEventListener('contextmenu',e=>e.preventDefault());}
+document.addEventListener('keydown',e=>{if(e.repeat)return;if(e.key==='ArrowUp'){st.th=1;if(!st.on)startEngine()}if(e.key==='ArrowDown')st.br=1;if(e.key===' '){st.rev=true;e.preventDefault()}});
+document.addEventListener('keyup',e=>{if(e.key==='ArrowUp')st.th=0;if(e.key==='ArrowDown')st.br=0;if(e.key===' ')st.rev=false});
+
+/* ===================== OPPSETT ===================== */
+$('#cars').innerHTML=CARS.map(c=>`<button data-id="${c.id}">${carSVG(c,1)}<span>${c.name}</span></button>`).join('');
+$('#cars').addEventListener('click',e=>{const b=e.target.closest('button');if(b)selCar(b.dataset.id)});
+$('#mode').addEventListener('click',e=>{const b=e.target.closest('button');if(b){if(st.demo)stopDemo();setMode(b.dataset.m)}});
+$('#units').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setUnit(b.dataset.u)});
+$('#start').addEventListener('click',()=>st.on?stopEngine():startEngine());
+$('#demo').addEventListener('click',()=>st.demo?stopDemo():startDemo());
+const bind=(id,key,fmt,after)=>{const el=$('#'+id),o=$('#'+id+'o');el.value=S[key];o.textContent=fmt(S[key]);el.addEventListener('input',()=>{S[key]=+el.value;o.textContent=fmt(S[key]);save();after&&after()})};
+bind('vol','vol',v=>v+' %',()=>{if(master)master.gain.setTargetAtTime(S.vol/100,ctx.currentTime,.03)});
+bind('int','int',v=>v);bind('chr','chr',v=>v,()=>send({p:{chr:S.chr/100}}));bind('cr','cr',v=>v,()=>send({p:{crack:S.cr/100}}));
+$('#auto').checked=S.auto;$('#auto').addEventListener('change',e=>{S.auto=e.target.checked;save()});
+selCar(S.car);setMode(S.mode);setUnit(S.unit);updPills();updStart();renderCompat();
+if(S.auto){const gate=$('#tapgate');gate.classList.add('show');const go=()=>{gate.classList.remove('show');startEngine();document.removeEventListener('pointerdown',go,true)};document.addEventListener('pointerdown',go,true)}
+
+let lastT=performance.now();
+setInterval(()=>{const n=performance.now();const dt=Math.min(.1,(n-lastT)/1000);lastT=n;tick(dt)},20);
+(function loop(){render();requestAnimationFrame(loop)})();
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ctx&&st.on)ctx.resume().catch(()=>{})});
+</script>
+</body>
+</html>
