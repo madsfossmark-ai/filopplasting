@@ -174,14 +174,14 @@ details.more[open] summary::after{content:"⌃"}
     <li>Hold volumet fornuftig: motorlyd kan skjule sirener og varsler.</li>
   </ul></div>
 </section>
-<p class="foot">Privat bruk · motortypene er beskrivelser av lydstil, ikke etterligninger av bestemte bilmerker.</p>
+<p class="foot">Privat bruk · lyden er syntetisert ut fra hver motors data (tenningsrekkefølge, turtall, gir), ikke opptak. Bilnavnene beskriver lydstilen; siden er ikke tilknyttet produsentene.</p>
 <div class="toast" id="toast"></div>
 <div id="tapgate">Trykk hvor som helst for å starte motoren</div>
 
 <script>
 /* ===================== LYDMOTOR (kjører i AudioWorklet eller ScriptProcessor) ===================== */
 class EngineDSP{
-  constructor(sr){this.sr=sr;this.c=null;this.P=0;this.base=0;this.k=0;this.na=0;this.rpm=0;this.load=0;this.tr=0;this.tl=0;this.on=0;this.amp=0;this.s=987654321;this.B=[];this.pop=0;this.plp=0;this.boost=0;this.bov=0;this.blp=0;this.wp=0;this.tp=0;this.cl=0;this.clp=0;this.crack=.5;this.chr=.5;this.e=[0,0,0,0];this.d0=[0,0];this.d1=[0,0];this.ev=[]}
+  constructor(sr){this.sr=sr;this.c=null;this.P=0;this.base=0;this.k=0;this.na=0;this.rpm=0;this.load=0;this.tr=0;this.tl=0;this.on=0;this.amp=0;this.s=987654321;this.B=[];this.pop=0;this.plp=0;this.boost=0;this.bov=0;this.blp=0;this.wp=0;this.tp=0;this.cl=0;this.clp=0;this.crack=.5;this.chr=.5;this.e=[0,0,0,0];this.d0=[0,0];this.d1=[0,0];this.ev=[];this.dl=new Float32Array(256);this.di=0;this.hi=1}
   rnd(){let x=this.s;x^=x<<13;x^=x>>>17;x^=x<<5;this.s=x>>>0;return this.s/4294967296}
   msg(m){
     if(m.cfg)this.set(m.cfg);
@@ -228,12 +228,14 @@ class EngineDSP{
         while(this.P>=this.na&&guard++<16){const e=this.ev[this.k];this.fire(e,rpm,ld,jit);this.k++;if(this.k>=this.ev.length){this.k=0;this.base++}this.na=this.base+this.ev[this.k].f}
         if(this.base>5000){this.P-=5000;this.base-=5000;this.na-=5000}
         this.pop*=popd;const pn=(this.rnd()*2-1)*this.pop;this.plp+=(pn-this.plp)*.35;
+        if(c.vtec){this.hi+=((rpm>c.vtec?1.9:1)-this.hi)*.0005}
+        const hi=this.hi,nzz=nz*(c.vtec?(.6+.4*hi):1);
         for(let b=0;b<2;b++){
           const B=this.B[b];B.p*=this.pd;const w=this.rnd()*2-1;
-          const x=B.p*(1+nz*w*(.35+ld))+this.plp*1.3;let y=0;
-          const rs=B.r;for(let j=0;j<rs.length;j++){const r=rs[j];const v=r.a1*r.y1-r.a2*r.y2+x*r.g;r.y2=r.y1;r.y1=v;y+=v}
+          const x=B.p*(1+nzz*w*(.35+ld))+this.plp*1.3;let y=0;
+          const rs=B.r;for(let j=0;j<rs.length;j++){const r=rs[j];const v=r.a1*r.y1-r.a2*r.y2+x*r.g;r.y2=r.y1;r.y1=v;y+=j>1?v*hi:v}
           y+=B.p*(c.thump||.25);
-          if(b)s1=y;else s0=y;
+          if(b){const D=this.dl,m=D.length;D[this.di]=y;const dd=Math.min(m-1,Math.round((c.bd||0)*.001*sr));s1=D[(this.di-dd+m)%m];this.di=(this.di+1)%m}else s0=y;
         }
         if(c.clatter){this.cl*=cld;const cn=this.rnd()*2-1;com+=(cn-this.clp)*this.cl*c.clatter*.18;this.clp=cn}
         if(c.sc){this.wp+=rpm/60*(c.scr||7)/sr;if(this.wp>=1)this.wp-=1;com+=Math.sin(TAU*this.wp)*c.sc*.12*Math.pow(rpm/c.red,1.5)*(.3+.7*ld)}
@@ -253,31 +255,44 @@ class EngineDSP{
 }
 
 /* ===================== BILER ===================== */
-const CB='LRRLRLLR'; // crossplane V8: banksekvens
+// Bankrekkefølge (L/R) utledet fra tenningsrekkefølge og produsentens sylindernummerering
+const AMV8=[[86,50,1],[220,110,.6],[580,260,.25],[1400,600,.08]];
 const CARS=[
- {id:'v8',name:'V8 Muskel',spec:'6,2 l crossplane V8 · 6 gir · doble eksosrør',style:'muscle',color:'#1d9be0',
-  cyl:8,banks:CB,idle:720,red:6800,gears:6,v1:72,vTop:290,res:[[92,55,1],[230,110,.6],[610,280,.25],[1500,700,.08]],noise:.35,jit:.10,pulse:.0012,drive:1.7,crack:.7,lp:3400},
- {id:'v12',name:'V12 Italiensk',spec:'6,5 l V12 · 8 900 o/min · 7 girs dobbelclutch',style:'super',color:'#c8202c',
-  cyl:12,idle:950,red:8900,gears:7,v1:95,vTop:340,res:[[175,90,1],[520,200,.7],[1300,480,.35],[3100,1200,.12]],noise:.22,jit:.03,pulse:.0005,drive:1.35,crack:.4,lp:7000},
- {id:'f6',name:'Flat-six GT',spec:'4,0 l boxer seks · 9 000 o/min · 7 girs PDK',style:'gt',color:'#e9ebee',
-  cyl:6,banks:'LRLRLR',idle:900,red:9000,gears:7,v1:70,vTop:318,res:[[140,80,1],[430,160,.7],[1100,340,.4],[2600,900,.18]],noise:.42,jit:.04,pulse:.0007,drive:1.8,crack:.6,lp:7500},
- {id:'sc',name:'V8 Kompressor',spec:'6,2 l V8 med kompressor · 8 gir · hylende hvin',style:'muscle2',color:'#2a2d33',
-  cyl:8,banks:CB,idle:800,red:6300,gears:8,v1:68,vTop:320,res:[[84,50,1],[205,110,.7],[560,260,.3],[1400,600,.1]],noise:.45,jit:.08,pulse:.0012,drive:2.0,crack:.8,sc:.4,scr:7.5,lp:3200},
- {id:'shift',name:'Girgalning',spec:'Flat-six · 9 000 o/min · 10 korte gir · topper på 120 km/h',style:'hatch',color:'#2f6b3a',
-  cyl:6,banks:'LRLRLR',idle:900,red:9000,gears:10,v1:20,vTop:120,res:[[140,80,1],[430,160,.7],[1100,340,.4],[2600,900,.18]],noise:.45,jit:.05,pulse:.0007,drive:1.8,crack:.8,lp:7500},
- {id:'v10',name:'V10 Superbil',spec:'5,2 l V10 · 8 700 o/min · skrikende toppturtall',style:'super',color:'#f2c230',
-  cyl:10,idle:1000,red:8700,gears:7,v1:90,vTop:330,res:[[160,90,1],[470,180,.7],[1200,420,.35],[2900,1000,.15]],noise:.32,jit:.04,pulse:.0006,drive:1.6,crack:.6,lp:6500},
- {id:'i5',name:'Rally-femmer',spec:'2,5 l rekkefem med turbo · 7 200 o/min · blow-off',style:'hatch',color:'#e6e6e6',
-  cyl:5,idle:900,red:7200,gears:6,v1:58,vTop:250,res:[[118,70,1],[330,150,.6],[900,340,.3],[2200,800,.12]],noise:.4,jit:.06,vary:.22,pulse:.0009,drive:1.7,crack:.8,turbo:.6,lp:5000},
- {id:'i4',name:'Turbo-firer',spec:'2,0 l rekkefire med turbo · 7 600 o/min',style:'sedan',color:'#3d5fd9',
-  cyl:4,idle:850,red:7600,gears:6,v1:55,vTop:250,res:[[150,90,1],[420,180,.6],[1150,400,.35],[2800,900,.15]],noise:.5,jit:.05,pulse:.0008,drive:1.7,crack:.6,turbo:.8,lp:5500},
- {id:'rot',name:'Wankel',spec:'1,3 l to-rotor · 9 000 o/min · brap-brap på tomgang',style:'gt',color:'#d6402a',
-  cyl:4,idle:1000,red:9000,gears:5,v1:65,vTop:260,res:[[200,120,1],[600,260,.8],[1600,600,.4],[3500,1400,.2]],noise:.6,jit:.13,pulse:.0014,drive:2.0,crack:1,lp:6000},
- {id:'dsl',name:'Diesel-pickup',spec:'6,7 l V8 diesel · 10 gir · turbo og ventilknatter',style:'pickup',color:'#7b8590',
-  cyl:8,idle:650,red:3600,gears:10,v1:32,vTop:180,res:[[70,50,1],[175,100,.6],[470,250,.3],[1200,600,.2]],noise:.6,jit:.05,pulse:.0015,drive:1.9,crack:.1,turbo:.9,clatter:1,lp:2800},
- {id:'vt',name:'V-twin sykkel',spec:'1,2 l 45° V-twin · 6 gir · potato-potato',style:'bike',color:'#111111',
-  cyl:2,fire:[0,315/720],idle:1000,red:8500,gears:6,v1:70,vTop:250,res:[[105,65,1],[290,140,.7],[780,320,.35],[2000,800,.15]],noise:.45,jit:.09,pulse:.0013,drive:1.9,crack:.9,lp:4200},
- {id:'ev',name:'Sci-fi elektrisk',spec:'Elektrisk motor · syntetisk turbinhvin · ett gir',style:'future',color:'#9aa3ad',
+ {id:'mustang',name:'Ford Mustang GT',spec:'5,0 Coyote V8 · crossplane 1-5-4-8-6-3-7-2 · 7 500 o/min · 6 gir',style:'muscle',color:'#1f4fbf',
+  cyl:8,banks:'RLRLLRLR',bd:.5,idle:700,red:7500,gears:6,v1:80,vTop:430,res:AMV8,noise:.38,jit:.09,pulse:.0012,drive:1.7,crack:.6,lp:3600},
+ {id:'vette',name:'Chevrolet Corvette C8',spec:'6,2 LT2 V8 · crossplane 1-8-7-2-6-5-4-3 · 6 600 o/min · 8 gir',style:'super',color:'#f2c230',
+  cyl:8,banks:'LRLRRLRL',bd:.4,idle:700,red:6600,gears:8,v1:80,vTop:450,res:[[82,48,1],[210,105,.62],[560,250,.26],[1350,580,.08]],noise:.36,jit:.08,pulse:.0013,drive:1.7,crack:.6,lp:3300},
+ {id:'hellcat',name:'Dodge Challenger Hellcat',spec:'6,2 Hemi V8 med kompressor · 1-8-4-3-6-5-7-2 · 8 gir · hylende hvin',style:'muscle2',color:'#2a2d33',
+  cyl:8,banks:'LRRLRLLR',bd:.6,idle:750,red:6200,gears:8,v1:70,vTop:450,res:[[80,46,1],[205,105,.68],[550,255,.3],[1380,600,.1]],noise:.45,jit:.1,pulse:.0013,drive:2.0,crack:.8,sc:.45,scr:7.5,lp:3200},
+ {id:'m3',name:'BMW M3 E92',spec:'4,0 S65 V8 · 1-5-4-8-6-3-7-2 · 8 300 o/min · 7 girs DKG',style:'sedan',color:'#3b6fd8',
+  cyl:8,banks:'RLRLLRLR',bd:.35,idle:750,red:8300,gears:7,v1:80,vTop:420,res:[[118,70,1],[330,150,.65],[860,320,.3],[2100,800,.12]],noise:.38,jit:.05,pulse:.0009,drive:1.7,crack:.6,lp:5200},
+ {id:'amg',name:'Mercedes-AMG C63',spec:'6,2 M156 V8 · 1-5-4-2-6-3-7-8 · 7 200 o/min · mye smell',style:'sedan',color:'#1e1f22',
+  cyl:8,banks:'RLRRLRLL',bd:.5,idle:700,red:7200,gears:7,v1:70,vTop:400,res:[[90,55,1],[240,120,.65],[650,280,.3],[1600,700,.1]],noise:.42,jit:.08,pulse:.0011,drive:1.9,crack:1,lp:3800},
+ {id:'f458',name:'Ferrari 458 Italia',spec:'4,5 V8 flatplane · 1-5-3-7-4-8-2-6 · 9 000 o/min · 7 gir',style:'super',color:'#c8202c',
+  cyl:8,banks:'LRLRLRLR',bd:.25,idle:1000,red:9000,gears:7,v1:95,vTop:420,res:[[180,100,1],[540,220,.75],[1400,500,.4],[3300,1200,.18]],noise:.3,jit:.03,pulse:.0006,drive:1.5,crack:.5,lp:7500},
+ {id:'f812',name:'Ferrari 812 Superfast',spec:'6,5 V12 · 8 900 o/min · 7 girs dobbelclutch',style:'gt',color:'#9e1018',
+  cyl:12,banks:'LRLRLRLRLRLR',bd:.2,idle:1000,red:8900,gears:7,v1:105,vTop:440,res:[[190,100,1],[560,220,.75],[1450,500,.4],[3400,1300,.16]],noise:.22,jit:.025,pulse:.0005,drive:1.35,crack:.4,lp:7500},
+ {id:'huracan',name:'Lamborghini Huracán',spec:'5,2 V10 jevn tenning · 8 500 o/min · 7 gir',style:'super',color:'#7fc72a',
+  cyl:10,banks:'LRLRLRLRLR',bd:.3,idle:1000,red:8500,gears:7,v1:95,vTop:420,res:[[165,90,1],[480,190,.7],[1250,430,.38],[3000,1100,.16]],noise:.34,jit:.04,pulse:.0006,drive:1.6,crack:.85,lp:6500},
+ {id:'gt3',name:'Porsche 911 GT3',spec:'4,0 boxer seks · 1-6-2-4-3-5 · 9 000 o/min · 7 girs PDK',style:'gt',color:'#e9ebee',
+  cyl:6,banks:'LRLRLR',bd:.3,idle:900,red:9000,gears:7,v1:85,vTop:330,res:[[150,85,1],[450,170,.75],[1150,350,.45],[2800,950,.2]],noise:.45,jit:.04,pulse:.0007,drive:1.8,crack:.6,lp:7500},
+ {id:'rs3',name:'Audi RS3',spec:'2,5 TFSI rekkefem · 1-2-4-5-3 · turbo · 7 000 o/min',style:'hatch',color:'#5d646d',
+  cyl:5,idle:850,red:7000,gears:7,v1:65,vTop:380,res:[[115,70,1],[320,140,.6],[880,330,.3],[2200,800,.12]],noise:.4,jit:.06,vary:.24,pulse:.0009,drive:1.7,crack:.9,turbo:.5,lp:5000},
+ {id:'wrx',name:'Subaru WRX STI',spec:'2,5 EJ25 boxer fire · ulikt lange grener (rumling) · turbo',style:'sedan',color:'#1d4fa8',
+  cyl:4,fire:[0,.272,.5,.787],banks:'LRLR',idle:800,red:6700,gears:6,v1:60,vTop:300,res:[[95,60,1],[260,120,.6],[700,300,.3],[1700,700,.12]],noise:.42,jit:.07,vary:.15,pulse:.0011,drive:1.8,crack:.7,turbo:.7,lp:4200},
+ {id:'rx8',name:'Mazda RX-8',spec:'1,3 Renesis to-rotor wankel · 9 000 o/min · 6 gir',style:'gt',color:'#d9dadc',
+  cyl:4,idle:1000,red:9000,gears:6,v1:60,vTop:290,res:[[210,120,1],[620,260,.8],[1650,600,.4],[3600,1400,.2]],noise:.6,jit:.12,pulse:.0014,drive:2.0,crack:1,lp:6000},
+ {id:'supra',name:'Toyota Supra MK4',spec:'3,0 2JZ-GTE rekkeseks · 1-5-3-6-2-4 · to turboer',style:'gt',color:'#e8742a',
+  cyl:6,idle:750,red:6800,gears:6,v1:65,vTop:330,res:[[130,80,1],[380,160,.6],[1000,360,.3],[2500,900,.12]],noise:.36,jit:.035,pulse:.0008,drive:1.6,crack:.6,turbo:.8,lp:5200},
+ {id:'s2000',name:'Honda S2000',spec:'2,0 F20C rekkefire · VTEC fra 6 000 · 9 000 o/min',style:'gt',color:'#c9302c',
+  cyl:4,idle:900,red:9000,gears:6,v1:68,vTop:270,res:[[160,95,1],[450,180,.6],[1200,420,.35],[2900,950,.16]],noise:.45,jit:.04,pulse:.0007,drive:1.7,crack:.5,vtec:6000,lp:5200},
+ {id:'f250',name:'Ford F-250 Power Stroke',spec:'6,7 V8 diesel · 1-3-7-2-6-5-4-8 · turbo · 10 gir',style:'pickup',color:'#7b8590',
+  cyl:8,banks:'RRRLLRLL',bd:.4,idle:650,red:3500,gears:10,v1:35,vTop:260,res:[[70,50,1],[175,100,.6],[470,250,.3],[1200,600,.2]],noise:.6,jit:.05,pulse:.0015,drive:1.9,crack:.1,turbo:.9,clatter:1,lp:2800},
+ {id:'harley',name:'Harley-Davidson 114',spec:'1,9 Milwaukee-Eight 45° V-twin · potato-potato',style:'bike',color:'#111111',
+  cyl:2,fire:[0,315/720],banks:'LR',idle:900,red:5500,gears:6,v1:70,vTop:230,res:[[80,50,1],[220,110,.7],[600,280,.35],[1500,700,.15]],noise:.45,jit:.1,pulse:.0018,drive:1.9,crack:.9,lp:3600},
+ {id:'v4',name:'Ducati Panigale V4',spec:'1,1 Desmosedici V4 «twin pulse» · 14 500 o/min',style:'bike',color:'#c8202c',
+  cyl:4,fire:[0,90/720,290/720,380/720],banks:'LRLR',idle:1300,red:14500,gears:6,v1:125,vTop:300,res:[[180,100,1],[520,200,.75],[1400,500,.4],[3400,1200,.2]],noise:.42,jit:.05,pulse:.0006,drive:1.7,crack:.8,lp:7000},
+ {id:'ev',name:'Elektrisk sci-fi',spec:'Elektrisk motor · syntetisk turbinhvin · ett gir',style:'future',color:'#9aa3ad',
   electric:true,idle:0,red:18000,gears:1,v1:260,vTop:260,lp:9000},
 ];
 
@@ -314,9 +329,9 @@ function carSVG(car,small){
 
 /* ===================== TILSTAND ===================== */
 const $=s=>document.querySelector(s);
-const S={car:'v8',vol:100,mode:'gps',int:60,chr:50,cr:50,unit:'kmh',auto:false};
+const S={car:'mustang',vol:100,mode:'gps',int:60,chr:50,cr:50,unit:'kmh',auto:false};
 try{Object.assign(S,JSON.parse(localStorage.getItem('motorlyd')||'{}'))}catch(e){}
-if(!CARS.find(c=>c.id===S.car))S.car='v8';
+if(!CARS.find(c=>c.id===S.car))S.car=CARS[0].id;
 const save=()=>{try{localStorage.setItem('motorlyd',JSON.stringify(S))}catch(e){}};
 let car=CARS.find(c=>c.id===S.car);
 const st={on:false,v:0,gear:1,rpm:0,load:0,th:0,br:0,hold:false,shiftT:0,blipT:0,rev:false,revR:0,startT:-1,demo:null,lim:0,shown:0};
@@ -428,7 +443,7 @@ function tick(dt){
   }
   st.rpm=rpm;st.out=load;
   send({t:{rpm,load,on:st.on}});
-  if(lp&&ctx){const f=clamp(car.lp*(.55+.9*S.chr/100)*(.5+.7*rpm/car.red+.3*load),250,16000);lp.frequency.setTargetAtTime(f,ctx.currentTime,.05)}
+  if(lp&&ctx){const f=clamp((car.vtec&&rpm>car.vtec?1.5:1)*car.lp*(.55+.9*S.chr/100)*(.5+.7*rpm/car.red+.3*load),250,16000);lp.frequency.setTargetAtTime(f,ctx.currentTime,.05)}
 }
 
 /* ===================== DEMO ===================== */
@@ -478,7 +493,7 @@ const pt=(f,r)=>{const a=(135+270*f)*Math.PI/180;return[CX+r*Math.cos(a),CY+r*Ma
 const arc=(f0,f1,r)=>{const[a,b]=pt(f0,r),[c,d]=pt(f1,r);return`M${a.toFixed(1)} ${b.toFixed(1)}A${r} ${r} 0 ${(f1-f0)*270>180?1:0} 1 ${c.toFixed(1)} ${d.toFixed(1)}`};
 let gMax=8;
 function drawGauge(){
-  const ev=car.electric;gMax=ev?20:Math.ceil(car.red/1000)+1;const step=ev?2:1;
+  const ev=car.electric;gMax=ev?20:Math.ceil(car.red/1000)+1;const step=ev||gMax>12?2:1;
   let h=`<path d="${arc(0,1,RS)}" fill="none" stroke="#23272e" stroke-width="12" stroke-linecap="round"/>`;
   if(!ev)h+=`<path d="${arc(car.red/1000/gMax,1,RS)}" fill="none" stroke="#d3263a" stroke-width="12" opacity=".85"/>`;
   h+=`<path id="garc" d="${arc(0,1,RS)}" pathLength="1000" fill="none" stroke="url(#og)" stroke-width="12" stroke-linecap="round" stroke-dasharray="0 1000"/>`;
