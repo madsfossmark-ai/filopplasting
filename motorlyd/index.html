@@ -380,7 +380,7 @@ function tick(dt){
     const drag=st.v>.1?.12+.00038*st.v*st.v:0;
     let a=th*accMax*(st.shiftT>0?0:1)-br*9.5-drag;
     if(st.hold&&!br&&st.th>0)a=0;
-    if(rpmIn(g)>=car.red&&g>=car.gears&&a>0)a=0;
+    if(rpmIn(g)>=car.red*.93&&g>=car.gears&&a>0)a=0;
     st.v=Math.max(0,st.v+a*dt);if(br&&st.v<.3)st.v=0;
     if(br)st.load=0;
   }
@@ -389,9 +389,12 @@ function tick(dt){
   if(car.electric){st.gear=1}
   else{
     if(v<1.5)st.gear=1;
-    const up=car.red*(.42+.5*clamp(st.load*(.5+I),0,1));
-    if(st.shiftT<=0){
-      if(st.gear<car.gears&&(rpmIn(st.gear)>up||rpmIn(st.gear)>car.red*.985)){st.gear++;st.shiftT=car.gears>8?.09:.14;flashGear()}
+    // Skiftpunkt: lav gass gir tidlig, full gass drar helt opp mot rødt felt (90 %). Aldri inn i rødt.
+    const up=car.red*(.5+.4*clamp(st.load*(.5+I),0,1));
+    let skip=false;while(st.gear<car.gears&&rpmIn(st.gear)>car.red*.93){st.gear++;skip=true}
+    if(skip){st.shiftT=car.gears>8?.09:.14;flashGear()}
+    else if(st.shiftT<=0){
+      if(st.gear<car.gears&&rpmIn(st.gear)>up){st.gear++;st.shiftT=car.gears>8?.09:.14;flashGear()}
       else if(st.gear>1&&rpmIn(st.gear)<car.red*.27){st.gear--;if(st.load<.2){st.blipT=.16}flashGear()}
       else if(st.gear>1&&st.load>.8&&rpmIn(st.gear)<car.red*.5&&rpmIn(st.gear-1)<car.red*.82){st.gear--;st.blipT=.12;flashGear()}
     }
@@ -399,7 +402,7 @@ function tick(dt){
   st.shiftT-=dt;st.blipT-=dt;
   // ---- turtall
   const stopped=v<2;
-  if(st.rev&&stopped){st.revR+=(car.red*.88-car.idle-st.revR)*Math.min(1,dt*3.2)}else st.revR+=(0-st.revR)*Math.min(1,dt*2.6);
+  if(st.rev&&stopped){st.revR+=(car.red*.86-car.idle-st.revR)*Math.min(1,dt*3.2)}else st.revR+=(0-st.revR)*Math.min(1,dt*2.6);
   let rpm,load=st.load;
   if(car.electric){rpm=v/car.vTop*car.red;if(stopped)rpm=Math.max(rpm,st.revR*.6);load=Math.max(load,st.rev&&stopped?.9:0)}
   else if(stopped&&st.gear===1){
@@ -413,7 +416,8 @@ function tick(dt){
   }
   if(st.shiftT>0)load=0;
   if(st.blipT>0)load=.55;
-  if(rpm>=car.red*.99&&!car.electric){rpm=car.red;st.lim+=dt;if(Math.floor(st.lim*14)%2)load=0}
+  // Tomt for gir: hold turtallet like under rødt (ingen begrenser som hamrer)
+  if(!car.electric&&rpm>car.red*.93){rpm=car.red*.93+(rpm-car.red*.93)*.15;if(rpm>car.red*.95)rpm=car.red*.95}
   // ---- start-sekvens
   if(st.startT>=0){
     st.startT+=dt;const t=st.startT;
