@@ -1,0 +1,4 @@
+Motorlyder: CryHam, Stunt Rally 3 – innspilt i engine-sim (ange-yaghi/engine-sim).
+Lisens: CC-BY 4.0 – https://creativecommons.org/licenses/by/4.0/
+Kilde: https://github.com/stuntrally/stuntrally3/tree/main/data/sounds/engines
+Endringer: kortet til sømløse looper, omsamplet til 32 kHz mono, nivåjustert.
